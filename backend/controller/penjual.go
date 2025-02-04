@@ -6,6 +6,7 @@ import (
 	. "backend/utils"
 	"net/http"
 
+	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
 	"go.mongodb.org/mongo-driver/bson"
@@ -42,12 +43,13 @@ func RegisterPenjual(c *gin.Context){
 		c.JSON(http.StatusInternalServerError, Message("gagal hash password"))
 		return
 	}
-	penjual.Password = hashPass
+	penjual.Password = hashPass	
 	_, err = collPenjual.InsertOne(ctx, penjual)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, Message("gagal tambah user"))
 		return
 	}
+
 	c.IndentedJSON(http.StatusOK, Message("berhasil nambah penjual", penjual))
 }
 
@@ -60,15 +62,26 @@ func LoginPenjual(c *gin.Context){
 		return
 	}
 	var penjual models.Penjual
-	filter := bson.M{"username": reqPenjual.Username, "password": reqPenjual.Password}
+	filter := bson.M{"username": reqPenjual.Username}
 	err = collPenjual.FindOne(ctx, filter).Decode(&penjual)
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
-			c.JSON(http.StatusBadRequest, Message("username atau password salah"))
+			c.JSON(http.StatusBadRequest, Message("username tidak ada"))
 			return
 		}
 		c.JSON(http.StatusInternalServerError, Message("gagal mendapatkan user"))
 		return
 	}
+	err = CekPassword(penjual.Password, reqPenjual.Password)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, Message("password salah"))
+		return
+	}
+
+	session := sessions.Default(c)
+	session.Set("username", penjual.Username)
+	session.Set("role", "penjual")
+	session.Save()
+
 	c.IndentedJSON(http.StatusOK, Message("berhasil login"))
 }
