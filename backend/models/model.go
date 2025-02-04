@@ -15,4 +15,5 @@ type Pembeli struct{
 	Password string `json:"password" validate:"required"`
 	Alamat string `json:"alamat" validate:"required"`
 	NoHp string `json:"nohp" validate:"required"`
+	Email string `json:"email" validate:"required"`
 }

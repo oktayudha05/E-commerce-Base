@@ -6,6 +6,7 @@ import (
 	. "backend/utils"
 	"net/http"
 
+	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -58,15 +59,24 @@ func LoginPembeli(c *gin.Context){
 		return
 	}
 	var pembeli models.Pembeli
-	filter := bson.M{"username": reqPembeli.Username, "password": reqPembeli.Password}
+	filter := bson.M{"username": reqPembeli.Username}
 	err = collPembeli.FindOne(ctx, filter).Decode(&pembeli)
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
-			c.JSON(http.StatusBadRequest, Message("username atau password salah"))
+			c.JSON(http.StatusBadRequest, Message("username tidak ada"))
 			return
 		}
 		c.JSON(http.StatusInternalServerError, Message("gagal mendapatkan user"))
 		return
 	}
-	c.IndentedJSON(http.StatusOK, Message("berhasil login"))
+	err = CekPassword(pembeli.Password, reqPembeli.Password)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, "password salah")
+		return
+	}
+	session := sessions.Default(c)
+	session.Set("username", pembeli.Username)
+	session.Set("role", "pembeli")
+	session.Save()
+	c.IndentedJSON(http.StatusOK, Message("berhasil login pembeli"))
 }
