@@ -46,7 +46,7 @@ func RegisterPenjual(c *gin.Context){
 	penjual.Password = hashPass	
 	_, err = collPenjual.InsertOne(ctx, penjual)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, Message("gagal tambah user"))
+		c.JSON(http.StatusInternalServerError, Message("gagal tambah user", gin.H{"data": err}))
 		return
 	}
 
@@ -55,10 +55,18 @@ func RegisterPenjual(c *gin.Context){
 
 func LoginPenjual(c *gin.Context){
 	ctx := c.Request.Context()
-	var reqPenjual models.Penjual
+	var reqPenjual struct{
+		Username string `json:"username" validate:"required"`
+		Password string `json:"password" validate:"required"`
+	}
 	err := c.BindJSON(&reqPenjual)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, Message("gagal bind request"))
+		return
+	}
+	err = validate.Struct(reqPenjual)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, Message("data tidak sesuai format"))
 		return
 	}
 	var penjual models.Penjual
@@ -80,6 +88,7 @@ func LoginPenjual(c *gin.Context){
 
 	session := sessions.Default(c)
 	session.Set("username", penjual.Username)
+	session.Set("penjual_id", penjual.ID.Hex())
 	session.Set("role", "penjual")
 	session.Save()
 

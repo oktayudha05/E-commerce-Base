@@ -52,10 +52,18 @@ func RegisterPembeli(c *gin.Context){
 
 func LoginPembeli(c *gin.Context){
 	ctx := c.Request.Context()
-	var reqPembeli models.Pembeli
+	var reqPembeli struct {
+		Username string `json:"username"`
+		Password string `json:"Password"`
+	}
 	err := c.BindJSON(&reqPembeli)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, Message("gagal bind request"))
+		return
+	}
+	err = validate.Struct(reqPembeli)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, Message("data tidak sesuai format"))
 		return
 	}
 	var pembeli models.Pembeli

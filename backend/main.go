@@ -31,6 +31,7 @@ func main() {
 		pembeli.POST("/register", controller.RegisterPembeli)
 		pembeli.POST("/login", controller.LoginPembeli)
 	}
+	router.POST("/barang", middleware.Auth("penjual"), controller.AddBarang)
 
 	router.GET("/logout", func(c *gin.Context) {
 		session := sessions.Default(c)
@@ -42,7 +43,8 @@ func main() {
 	router.GET("/dashboard", middleware.Auth("penjual"), func(c *gin.Context){
 		session := sessions.Default(c)
 		username := session.Get("username")
-		c.JSON(200, gin.H{"message": "halo bro " + username.(string)})
+		idpenjual := session.Get("penjual_id")
+		c.JSON(200, gin.H{"message": "halo bro " + username.(string) + idpenjual.(string)})
 	})
 	router.Run("127.0.0.1:3001")
 }
