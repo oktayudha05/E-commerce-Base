@@ -35,6 +35,7 @@ func main() {
 	router.POST("/barang", middleware.Auth("penjual"), controller.AddBarang)
 
 	router.GET("/barang", controller.GetAllBarang)
+	router.GET("/barang/:id", controller.GetBarangById)
 
 	router.GET("/logout", func(c *gin.Context) {
 		session := sessions.Default(c)

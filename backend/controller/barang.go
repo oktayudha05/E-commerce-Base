@@ -94,3 +94,54 @@ func GetAllBarang(c *gin.Context){
 	}
 	c.JSON(http.StatusOK, gin.H{"data": results})
 }
+
+func GetBarangById(c *gin.Context){
+	ctx := c.Request.Context()
+	id := c.Param("id")
+	objectId, err := primitive.ObjectIDFromHex(id)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, utils.Message("ID tidak valid"))
+		return
+	}
+	pipeline := bson.A{
+		bson.D{{Key: "$match", Value: bson.D{{Key: "_id", Value: objectId}}}},
+		bson.D{
+			{Key: "$lookup", Value: bson.D{
+				{Key: "from", Value: "penjual"},
+				{Key: "localField", Value: "penjualid"},
+				{Key: "foreignField", Value: "_id"},
+				{Key: "as", Value: "penjual"},
+			}},
+		},
+		bson.D{{Key: "$unwind", Value: "$penjual"}},
+		bson.D{
+			{Key: "$project", Value: bson.D{
+				{Key: "id", Value: 1},
+				{Key: "namabarang", Value: 1},
+				{Key: "jenis", Value: 1},
+				{Key: "harga", Value: 1},
+				{Key: "stok", Value: 1},
+				{Key: "nama_penjual", Value: "$penjual.nama"},
+				{Key: "alamat_penjual", Value: "$penjual.alamat"},
+			}},
+		},
+	}
+	cursor, err := collBarang.Aggregate(ctx, pipeline)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, utils.Message("Gagal mengambil data"))
+		return
+	}
+	defer cursor.Close(ctx)
+	var result models.ResBarang
+	if cursor.Next(ctx){
+		err := cursor.Decode(&result)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, utils.Message("Gagal memproses data"))
+			return
+		}
+	} else {
+		c.JSON(http.StatusNotFound, utils.Message("Barang tidak ditemukan"))
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"data": result})
+}
