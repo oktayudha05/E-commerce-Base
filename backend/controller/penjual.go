@@ -3,7 +3,7 @@ package controller
 import (
 	"backend/database"
 	"backend/models"
-	. "backend/utils"
+	"backend/utils"
 	"net/http"
 
 	"github.com/gin-contrib/sessions"
@@ -21,36 +21,36 @@ func RegisterPenjual(c *gin.Context){
 	var penjual models.Penjual
 	err := c.BindJSON(&penjual)
 	if err != nil {
-		c.JSON(http.StatusConflict, Message("gagal bind data"))
+		c.JSON(http.StatusConflict, utils.Message("gagal bind data"))
 		return
 	}
 	err = validate.Struct(penjual)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, Message("format data salah"))
+		c.JSON(http.StatusBadRequest, utils.Message("format data salah"))
 		return
 	}
 	count, err := collPenjual.CountDocuments(ctx, bson.M{"username": penjual.Username})
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, Message("error mencari username"))
+		c.JSON(http.StatusInternalServerError, utils.Message("error mencari username"))
 		return
 	}
 	if count > 0 {
-		c.JSON(http.StatusFound, Message("Username sudah ada"))
+		c.JSON(http.StatusFound, utils.Message("Username sudah ada"))
 		return
 	}
-	hashPass, err := HashPassword(penjual.Password)
+	hashPass, err := utils.HashPassword(penjual.Password)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, Message("gagal hash password"))
+		c.JSON(http.StatusInternalServerError, utils.Message("gagal hash password"))
 		return
 	}
 	penjual.Password = hashPass	
 	_, err = collPenjual.InsertOne(ctx, penjual)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, Message("gagal tambah user", gin.H{"data": err}))
+		c.JSON(http.StatusInternalServerError, utils.Message("gagal tambah user", gin.H{"data": err}))
 		return
 	}
 
-	c.IndentedJSON(http.StatusOK, Message("berhasil nambah penjual", penjual))
+	c.IndentedJSON(http.StatusOK, utils.Message("berhasil nambah penjual", penjual))
 }
 
 func LoginPenjual(c *gin.Context){
@@ -61,12 +61,12 @@ func LoginPenjual(c *gin.Context){
 	}
 	err := c.BindJSON(&reqPenjual)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, Message("gagal bind request"))
+		c.JSON(http.StatusBadRequest, utils.Message("gagal bind request"))
 		return
 	}
 	err = validate.Struct(reqPenjual)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, Message("data tidak sesuai format"))
+		c.JSON(http.StatusBadRequest, utils.Message("data tidak sesuai format"))
 		return
 	}
 	var penjual models.Penjual
@@ -74,15 +74,15 @@ func LoginPenjual(c *gin.Context){
 	err = collPenjual.FindOne(ctx, filter).Decode(&penjual)
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
-			c.JSON(http.StatusBadRequest, Message("username tidak ada"))
+			c.JSON(http.StatusBadRequest, utils.Message("username tidak ada"))
 			return
 		}
-		c.JSON(http.StatusInternalServerError, Message("gagal mendapatkan user"))
+		c.JSON(http.StatusInternalServerError, utils.Message("gagal mendapatkan user"))
 		return
 	}
-	err = CekPassword(penjual.Password, reqPenjual.Password)
+	err = utils.CekPassword(penjual.Password, reqPenjual.Password)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, Message("password salah"))
+		c.JSON(http.StatusUnauthorized, utils.Message("password salah"))
 		return
 	}
 
@@ -92,5 +92,5 @@ func LoginPenjual(c *gin.Context){
 	session.Set("role", "penjual")
 	session.Save()
 
-	c.IndentedJSON(http.StatusOK, Message("berhasil login"))
+	c.IndentedJSON(http.StatusOK, utils.Message("berhasil login"))
 }

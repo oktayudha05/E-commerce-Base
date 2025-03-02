@@ -2,7 +2,7 @@ package controller
 
 import (
 	"backend/models"
-	. "backend/utils"
+	"backend/utils"
 	"net/http"
 
 	"backend/database"
@@ -22,26 +22,75 @@ func AddBarang(c *gin.Context){
 	var req models.Barang
 	err := c.BindJSON(&req)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, Message("request tidak sesuai format"))
+		c.JSON(http.StatusBadRequest, utils.Message("request tidak sesuai format"))
 		return
 	}
 	session := sessions.Default(c)
 	idPenjualHex := session.Get("penjual_id")
 	idPenjual, err := primitive.ObjectIDFromHex(idPenjualHex.(string))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, utils.Message("gagal menentukan id"))
+		return
+	}
 	req.PenjualID = idPenjual
 	
 	filter := bson.M{"namabarang": req.NamaBarang, "jenis": req.Jenis, "penjualid": req.PenjualID}
 	tambah := bson.M{"$inc": bson.M{"stok": req.Stok}}
 	result := collBarang.FindOneAndUpdate(ctx, filter, tambah)
 	if result.Err() == nil {
-		c.IndentedJSON(http.StatusCreated, Message("berhasil tambah stok barang di database", req))
+		c.IndentedJSON(http.StatusCreated, utils.Message("berhasil tambah stok barang di database", req))
 		return
 	}
 	req.ID = primitive.NewObjectID()
 	_, err = collBarang.InsertOne(ctx, req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, Message("gagal menambahkan barang ke database"))
+		c.JSON(http.StatusInternalServerError, utils.Message("gagal menambahkan barang ke database"))
 		return
 	}
-	c.IndentedJSON(http.StatusOK, Message("berhasil tambah barang", req))
+	c.IndentedJSON(http.StatusOK, utils.Message("berhasil tambah barang", req))
+}
+
+func GetAllBarang(c *gin.Context){
+	ctx := c.Request.Context()
+	
+	pipeline := bson.A{
+		bson.D{
+			{Key: "$lookup", Value: bson.D{
+				{Key: "from", Value: "penjual"},
+				{Key: "localField", Value: "penjualid"},
+				{Key: "foreignField", Value: "_id"},
+				{Key: "as", Value: "penjual"},
+			}},
+		},
+		bson.D{{Key: "$unwind", Value: "$penjual"}},
+		bson.D{
+			{Key: "$project", Value: bson.D{
+				{Key: "id", Value: 1},
+				{Key: "namabarang", Value: 1},
+				{Key: "jenis", Value: 1},
+				{Key: "harga", Value: 1},
+				{Key: "stok", Value: 1},
+				{Key: "nama_penjual", Value: "$penjual.nama"},
+				{Key: "alamat_penjual", Value: "$penjual.alamat"},
+			}},
+		},
+	}
+
+	cursor, err := collBarang.Aggregate(ctx, pipeline)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, utils.Message("Gagal mengambil data barang"))
+		return
+	}
+	defer cursor.Close(ctx)
+	var results []models.ResBarang
+	err = cursor.All(ctx, &results); 
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, utils.Message("Gagal memproses data barang"))
+		return
+	}
+	if len(results) == 0 {
+		c.JSON(http.StatusOK, gin.H{"data": []interface{}{}})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"data": results})
 }

@@ -31,3 +31,13 @@ type Barang struct{
 	PenjualID primitive.ObjectID `json:"penjual_id" validate:"required"`
 }
 
+type ResBarang struct{
+	ID string `json:"id" bson:"_id"`
+	NamaBarang string `json:"nama_barang" bson:"namabarang"`
+	Jenis string `json:"jenis" bson:"jenis"`
+	Harga uint32 `json:"harga" bson:"harga"`
+	Stok int `json:"stok" bson:"stok"`
+	NamaPenjual string `json:"nama_penjual" bson:"nama_penjual"`
+	AlamatPenjual string `json:"alamat_penjual" bson:"alamat_penjual"`
+}
+
